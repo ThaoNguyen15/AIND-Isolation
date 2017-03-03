@@ -124,20 +124,45 @@ class CustomPlayer:
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
 
+        # no legal moves left
+        if legal_moves == []:
+            return (-1, -1)
+        # Default best move
+        best_move = legal_moves[0]
+        # Determine the search method
+        if self.method == 'minimax':
+            search_method = self.minimax
+        elif self.method == 'alphabeta':
+            search_method = self.alphabeta
+        else:
+            raise ValueError(
+                'Method ' + str(self.method) + ' not supported.')            
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
-
+            if not self.iterative:
+                # how to determine the fixed depth level ?
+                # this is a function of remaining search time, method
+                fixed_depth = self.max_depth(self.method, search_time)
+                _, best_move = self.minimax(game, fixed_depth, maximizing_player=True)
+            else:
+                current_depth = 2 # adjust this
+                while True: # continue to do this until we run out of time
+                    _, best_move = self.minimax(game, current_depth, maximizing_player=True)
+                    current_depth += 1
         except Timeout:
             # Handle any actions required at timeout, if necessary
             pass
-
+        
         # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        return best_move
 
+    def max_depth(method, search_time):
+        # Return a fixed number for now
+        return 10
+    
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
 
@@ -171,9 +196,19 @@ class CustomPlayer:
         """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
-
-        # TODO: finish this function!
-        raise NotImplementedError
+        # List of all legal moves
+        legal_moves = game.get_legal_moves()
+        if depth == 0 or legal_move == []:
+            # self.score(game, self) seems silly
+            return self.score(game, self), (-1, -1)
+        else:
+            children = [self.minimax(game.forcast_move(m),
+                                     depth-1, not maximizing_player)
+                        for m in legal_moves]
+            if maximizing_player:
+                return max(children)
+            else:
+                return min(children)
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -215,6 +250,34 @@ class CustomPlayer:
         """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
+        
+        legal_moves = game.get_legal_moves()
+        if depth == 0 or legal_moves == []:
+            return self.score(game, self), (-1, -1)
+        # determine if we want to prune this node or not
+        else:
+            # okay this is going to be hard, but I can do it!!!
+            # calculate first child
+            score, best_move = self.alphabeta(game.forcast_move(legal_moves[0]),
+                                              depth-1,
+                                              alpha=alpha,
+                                              beta=beta,
+                                              maximizing_player=not maximizing_player)
+            # Update alpha & beta
+            if maximizing_player:
+                alpha = max(alpha, score)
+            else:
+                beta = min(beta, score)
+            for move in legal_moves[1:]:
+                pass
+            # NOT DONE YET
+                
 
-        # TODO: finish this function!
-        raise NotImplementedError
+                
+                                              
+                                              
+                                                                
+                                                      
+            
+            
+            
