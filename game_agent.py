@@ -13,6 +13,8 @@ class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
+def my_moves(game, player):
+    return float(len(game.get_legal_moves(player)))
 
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -36,10 +38,7 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-
-    # TODO: finish this function!
-    raise NotImplementedError
-
+    return my_moves(game, player)
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -144,13 +143,13 @@ class CustomPlayer:
             # when the timer gets close to expiring
             if not self.iterative:
                 # how to determine the fixed depth level ?
-                # this is a function of remaining search time, method
-                fixed_depth = self.max_depth(self.method, search_time)
-                _, best_move = self.minimax(game, fixed_depth, maximizing_player=True)
+
+                fixed_depth = self.max_depth()
+                _, best_move = search_method(game, fixed_depth, maximizing_player=True)
             else:
                 current_depth = 2 # adjust this
                 while True: # continue to do this until we run out of time
-                    _, best_move = self.minimax(game, current_depth, maximizing_player=True)
+                    _, best_move = search_method(game, current_depth, maximizing_player=True)
                     current_depth += 1
         except Timeout:
             # Handle any actions required at timeout, if necessary
@@ -159,7 +158,9 @@ class CustomPlayer:
         # Return the best move from the last completed search iteration
         return best_move
 
-    def max_depth(method, search_time):
+    def max_depth(self):
+        # this is a function of remaining search time and the search method
+        # self.time_left & self.method
         # Return a fixed number for now
         return 10
     
@@ -198,11 +199,11 @@ class CustomPlayer:
             raise Timeout()
         # List of all legal moves
         legal_moves = game.get_legal_moves()
-        if depth == 0 or legal_move == []:
+        if depth == 0 or legal_moves == []:
             # self.score(game, self) seems silly
             return self.score(game, self), (-1, -1)
         else:
-            children = [self.minimax(game.forcast_move(m),
+            children = [self.minimax(game.forecast_move(m),
                                      depth-1, not maximizing_player)
                         for m in legal_moves]
             if maximizing_player:
@@ -254,23 +255,33 @@ class CustomPlayer:
         legal_moves = game.get_legal_moves()
         if depth == 0 or legal_moves == []:
             return self.score(game, self), (-1, -1)
-        # determine if we want to prune this node or not
-        else:
-            # okay this is going to be hard, but I can do it!!!
-            # calculate first child
-            score, best_move = self.alphabeta(game.forcast_move(legal_moves[0]),
+        
+        # helper function: determine if we want to prune this node or not
+        def prune(old_alpha, old_beta, score, maximizing_player):
+            if maximizing_player:
+                return old_alpha != '-inf' and old_alpha >= score
+            else:
+                return old_beta != 'inf' and old_beta <= score
+            
+        # helper function: update alpha, beta
+        def update_limit(old_alpha, old_beta, score, maximizing_player):
+            if maximizing_player:
+                return score, old_beta
+            else:
+                return old_alpha, score
+            
+        for move in legal_moves:
+            score, best_move = self.alphabeta(game.forecast_move(move),
                                               depth-1,
                                               alpha=alpha,
                                               beta=beta,
                                               maximizing_player=not maximizing_player)
-            # Update alpha & beta
-            if maximizing_player:
-                alpha = max(alpha, score)
-            else:
-                beta = min(beta, score)
-            for move in legal_moves[1:]:
-                pass
-            # NOT DONE YET
+            
+            if prune(alpha, beta, score, maximizing_player):
+                break
+            alpha, beta = update_limit(alpha, beta, score, maximizing_player)
+        return score, best_move
+        
                 
 
                 
