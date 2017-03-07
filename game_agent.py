@@ -13,8 +13,21 @@ class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
+def moves_combined(game, player, my_moves_param, opp_moves_param):
+    utility = game.utility(player)
+    if utility == 0:
+        my_moves = len(game.get_legal_moves(player))
+        opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+        return float(my_moves_param * my_moves + opp_moves_param * opp_moves)
+    else:
+        return utility
+    
 def my_moves(game, player):
-    return float(len(game.get_legal_moves(player)))
+    utility = game.utility(player)
+    if utility == 0:
+        return float(len(game.get_legal_moves(player)))
+    else:
+        return utility
 
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -38,7 +51,7 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    return my_moves(game, player)
+    return moves_combined(game, player, 1, -1)
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -114,10 +127,7 @@ class CustomPlayer:
             Board coordinates corresponding to a legal move; may return
             (-1, -1) if there are no available legal moves.
         """
-
         self.time_left = time_left
-
-        # TODO: finish this function!
 
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
@@ -135,34 +145,25 @@ class CustomPlayer:
             search_method = self.alphabeta
         else:
             raise ValueError(
-                'Method ' + str(self.method) + ' not supported.')            
+                'Method ' + str(self.method) + ' not supported.')
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
             if not self.iterative:
-                # how to determine the fixed depth level ?
-
-                fixed_depth = self.max_depth()
+                fixed_depth = self.search_depth
                 _, best_move = search_method(game, fixed_depth, maximizing_player=True)
             else:
-                current_depth = 2 # adjust this
+                current_depth = 1
                 while True: # continue to do this until we run out of time
                     _, best_move = search_method(game, current_depth, maximizing_player=True)
                     current_depth += 1
         except Timeout:
             # Handle any actions required at timeout, if necessary
             pass
-        
         # Return the best move from the last completed search iteration
         return best_move
-
-    def max_depth(self):
-        # this is a function of remaining search time and the search method
-        # self.time_left & self.method
-        # Return a fixed number for now
-        return 10
     
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -197,19 +198,17 @@ class CustomPlayer:
         """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
-        # List of all legal moves
+        # List all legal moves
         legal_moves = game.get_legal_moves()
-        if depth == 0 or legal_moves == []:
-            # self.score(game, self) seems silly
+        if legal_moves == []:
             return self.score(game, self), (-1, -1)
+        if depth == 1:
+            children = [(self.score(game.forecast_move(m), self), m) for m in legal_moves]
         else:
-            children = [self.minimax(game.forecast_move(m),
-                                     depth-1, not maximizing_player)
+            children = [(self.minimax(game.forecast_move(m),
+                                      depth-1, not maximizing_player)[0], m)
                         for m in legal_moves]
-            if maximizing_player:
-                return max(children)
-            else:
-                return min(children)
+        return max(children) if maximizing_player else min(children)
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -255,34 +254,47 @@ class CustomPlayer:
         legal_moves = game.get_legal_moves()
         if depth == 0 or legal_moves == []:
             return self.score(game, self), (-1, -1)
-        
-        # helper function: determine if we want to prune this node or not
-        def prune(old_alpha, old_beta, score, maximizing_player):
-            if maximizing_player:
-                return old_alpha != '-inf' and old_alpha >= score
-            else:
-                return old_beta != 'inf' and old_beta <= score
-            
-        # helper function: update alpha, beta
-        def update_limit(old_alpha, old_beta, score, maximizing_player):
-            if maximizing_player:
-                return score, old_beta
-            else:
-                return old_alpha, score
-            
-        for move in legal_moves:
-            score, best_move = self.alphabeta(game.forecast_move(move),
-                                              depth-1,
-                                              alpha=alpha,
-                                              beta=beta,
-                                              maximizing_player=not maximizing_player)
-            
-            if prune(alpha, beta, score, maximizing_player):
+
+        # evaluate the first child
+        best_move = legal_moves[0]
+        best_score, _ = self.alphabeta(game.forecast_move(best_move),
+                                       depth-1,
+                                       alpha=alpha,
+                                       beta=beta,
+                                       maximizing_player=not maximizing_player)
+        for move in legal_moves[1:]:
+            # TO IMPROVE: we don't need to prune if best score isn't updated
+            if self.__prune__(alpha, beta, best_score, maximizing_player):
                 break
-            alpha, beta = update_limit(alpha, beta, score, maximizing_player)
-        return score, best_move
-        
-                
+            alpha, beta = self.__update_limit__(alpha, beta, best_score, maximizing_player)
+            score, _ = self.alphabeta(game.forecast_move(move),
+                                      depth-1,
+                                      alpha=alpha,
+                                      beta=beta,
+                                      maximizing_player=not maximizing_player)
+            if (maximizing_player and score > best_score) or \
+                (not maximizing_player and score < best_score):
+                best_move, best_score = move, score
+            
+        return best_score, best_move
+    
+    def __prune__(self, old_alpha, old_beta, score, maximizing_player):
+        """ Helper Function for alphabeta method
+        Decide if we can prune the rest of the child nodes on the current branch
+        Returns a boolean value
+        """
+        return (maximizing_player and old_beta <= score) or \
+            (not maximizing_player and old_alpha >= score)
+                    
+    def __update_limit__(self, old_alpha, old_beta, score, maximizing_player):
+        """ Helper Function for alphabeta method
+        Update the alpha beta limit based on the score of a child node
+        Return (new-alpha, new-beta) tuple
+        """
+        if maximizing_player:
+            return score, old_beta
+        else:
+            return old_alpha, score    
 
                 
                                               
