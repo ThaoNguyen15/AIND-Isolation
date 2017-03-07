@@ -254,8 +254,11 @@ class CustomPlayer:
         legal_moves = game.get_legal_moves()
         if depth == 0 or legal_moves == []:
             return self.score(game, self), (-1, -1)
-
+        
+        # Default values
         best_score = float('-inf') if maximizing_player else float('inf')
+        best_move = legal_moves[0]
+        
         for move in legal_moves:
             score, _ = self.alphabeta(game.forecast_move(move),
                                       depth-1,

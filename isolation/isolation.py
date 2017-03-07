@@ -148,7 +148,25 @@ class Board(object):
         """
         return [(i, j) for j in range(self.width) for i in range(self.height)
             if self.__board_state__[i][j] == Board.BLANK]
+    
+    def get_blocked_spaces(self):
+        """
+        Return a list of the location that are either blocked or occupied
+        on the board
+        """
+        return [(i, j) for j in range(self.width) for i in range(self.height)
+            if self.__board_state__[i][j] != Board.BLANK]
 
+    def is_partitioned(self):
+        """
+        Determine if the board is partitiond into separate areas for 2 players
+        """
+        blocked_spaces = self.get_blocked_spaces()
+        # could be any shape that is continuous with width at least 2
+        # and extend from 1 end of the board to the other end
+        raise NotImplementedError
+
+    
     def get_player_location(self, player):
         """
         Find the current location of the specified player on the board.
