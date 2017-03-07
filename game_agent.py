@@ -255,18 +255,8 @@ class CustomPlayer:
         if depth == 0 or legal_moves == []:
             return self.score(game, self), (-1, -1)
 
-        # evaluate the first child
-        best_move = legal_moves[0]
-        best_score, _ = self.alphabeta(game.forecast_move(best_move),
-                                       depth-1,
-                                       alpha=alpha,
-                                       beta=beta,
-                                       maximizing_player=not maximizing_player)
-        for move in legal_moves[1:]:
-            # TO IMPROVE: we don't need to prune if best score isn't updated
-            if self.__prune__(alpha, beta, best_score, maximizing_player):
-                break
-            alpha, beta = self.__update_limit__(alpha, beta, best_score, maximizing_player)
+        best_score = float('-inf') if maximizing_player else float('inf')
+        for move in legal_moves:
             score, _ = self.alphabeta(game.forecast_move(move),
                                       depth-1,
                                       alpha=alpha,
@@ -275,7 +265,11 @@ class CustomPlayer:
             if (maximizing_player and score > best_score) or \
                 (not maximizing_player and score < best_score):
                 best_move, best_score = move, score
-            
+                # only checking for pruning if best_score is updated
+                if self.__prune__(alpha, beta, best_score, maximizing_player):
+                    break
+                alpha, beta = self.__update_limit__(alpha, beta, best_score, maximizing_player)
+                
         return best_score, best_move
     
     def __prune__(self, old_alpha, old_beta, score, maximizing_player):
