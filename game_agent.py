@@ -13,22 +13,6 @@ class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
-def moves_combined(game, player, my_moves_param, opp_moves_param):
-    utility = game.utility(player)
-    if utility == 0:
-        my_moves = len(game.get_legal_moves(player))
-        opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-        return float(my_moves_param * my_moves + opp_moves_param * opp_moves)
-    else:
-        return utility
-    
-def my_moves(game, player):
-    utility = game.utility(player)
-    if utility == 0:
-        return float(len(game.get_legal_moves(player)))
-    else:
-        return utility
-
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
@@ -51,7 +35,16 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    return moves_combined(game, player, 1, -1)
+    #return moves_combined(game, player, param)
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    my_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(0.77 * my_moves + 0.23 * opp_moves)
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -189,7 +182,7 @@ class CustomPlayer:
 
         tuple(int, int)
             The best move for the current branch; (-1, -1) for no legal moves
-
+        
         Notes
         -----
             (1) You MUST use the `self.score()` method for board evaluation

@@ -367,3 +367,27 @@ class Board(object):
                 return self.__inactive_player__, move_history, "illegal move"
 
             self.apply_move(curr_move)
+            
+    def rotate(self, degrees):
+        """
+        Return a copy of the board that is rotated by *degrees* counter-clockwise
+        If the board is square: degrees could be (90, 180, 270)
+        If the board is rectangular: degrees could be 180
+        degrees: integer
+        """
+        raise NotImplementedError
+
+    def is_twin(self, other):
+        """
+        Determine if another board is a copy of this board. Return True/False
+        other: Board object
+        """
+        raise NotImplementedError
+
+    def is_symmetrical_twin(self, other):
+        """
+        Determine if there exists a rotated version of other 
+        that is the twin of `self`
+        Returns True / False
+        """
+        raise NotImplementedError
